@@ -1,6 +1,6 @@
 print ( "Hello, World!" ) ;
-print("Hello,
- World!");
 str test = "3";
-num i = 5;
-bool r = true;
+{
+    num i = 5 + 7;
+    bool r = true;
+};

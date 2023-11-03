@@ -1,16 +1,11 @@
-use std::{
-    error::Error,
-    ffi::OsStr,
-    fs::{self, File},
-    io::BufReader,
-    path::Path,
-};
-
-use tokenizer::tokenizer;
-
-type Res<T> = Result<T, Box<dyn Error>>;
+use ops::{ErrorHandler, Res};
+use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
 
 mod tokenizer;
+use tokenizer::tokenizer;
+
+mod parser;
+use parser::Scope;
 
 const FILE_EXTENSION: &str = "nop";
 
@@ -78,7 +73,7 @@ impl CLI {
                 }
                 _ => {}
             }
-            return err.err(&format!("Source file '{}' does not exist.", args[0]));
+            return ErrorHandler::err(&format!("Source file '{}' does not exist.", args[0]));
         }
         if source_file
             .extension()
@@ -91,7 +86,7 @@ impl CLI {
             })
             .is_none()
         {
-            return err.err(&format!(
+            return ErrorHandler::err(&format!(
                 "Source file '{}' is not a 'OPS' file. Please specify a valid '.{}' file.",
                 args[0], FILE_EXTENSION
             ));
@@ -114,24 +109,6 @@ impl CLI {
     }
 }
 
-struct ErrorHandler {
-    exec_file: String,
-}
-
-impl ErrorHandler {
-    fn new(exec_file: String) -> ErrorHandler {
-        ErrorHandler { exec_file }
-    }
-
-    fn err<T>(&self, message: &str) -> Res<T> {
-        Err(message.into())
-    }
-
-    fn helpful_err<T>(&self, message: &str) -> Res<T> {
-        Err(format!("{} For help use `{} -h`", message, self.exec_file).into())
-    }
-}
-
 fn main() -> Res<()> {
     let exec_name = std::env::current_exe()?
         .file_name()
@@ -149,7 +126,7 @@ fn main() -> Res<()> {
     let f = match File::open(&args.source_file) {
         Ok(f) => f,
         Err(e) => {
-            return err.err(&format!(
+            return ErrorHandler::err(&format!(
                 "Could not open source file '{}'. {}",
                 &args.source_file, e
             ))
@@ -157,13 +134,14 @@ fn main() -> Res<()> {
     };
     let f = BufReader::new(f);
     let tokens = tokenizer(f, &args.source_file)?;
-    for token in tokens {
-        println!(
-            "{} Token with value: '{}' at {}",
-            token.token.token_type(),
-            token.token.to_string(),
-            token.position
-        )
-    }
+    // for token in tokens {
+    //     println!(
+    //         "{} Token with value: '{}' at {}",
+    //         token.token.token_type(),
+    //         token.token.to_string(),
+    //         token.position
+    //     )
+    // }
+    Scope::new().parse_block(tokens)?;
     Ok(())
 }
